@@ -1,0 +1,65 @@
+variables:
+  GOPRIVATE: "dm-gitlab.bolo.me"
+  GOPROXY: "https://mirrors.aliyun.com/goproxy/,direct"
+  GONOPROXY: "dm-gitlab.bolo.me"
+  GONOSUMDB: "dm-gitlab.bolo.me"
+  GOPROJECT: "topic"
+stages:
+  - test
+  - build
+  - deploy
+
+.go-cache:
+  variables:
+    GOPATH: $CI_PROJECT_DIR/.go
+  before_script:
+    - mkdir -p .go
+  cache:
+    paths:
+      - .go/pkg/mod/
+
+test:
+  stage: test
+  image: registry-vpc.cn-hangzhou.aliyuncs.com/hubpd/golang-builder:2.0
+  extends: .go-cache
+  variables:
+    HUBPD_DBDSN: root:pwd@tcp(mysql:3306)/test?parseTime=True&loc=Asia%2FShanghai
+    MYSQL_DATABASE: "test"
+    MYSQL_ROOT_PASSWORD: "pwd"
+  tags:
+    - docker
+  services:
+    - name: mysql:5.7
+      command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci']
+  script:
+    - export REDIS_MODE=labRannerEnv
+    - go test -p 1 ./...
+
+
+build-image:
+  stage: build
+  tags:
+    - shell
+  script:
+    - docker build -t registry-vpc.cn-hangzhou.aliyuncs.com/hubpd/$GOPROJECT:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA .
+    - docker push registry-vpc.cn-hangzhou.aliyuncs.com/hubpd/$GOPROJECT:$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA
+  only:
+    - master
+    - release
+
+deploy-k8s:
+  stage: deploy
+  tags:
+    - docker
+  image:
+    name: alpine/helm:3.2.1
+    entrypoint: ["/bin/sh", "-c"]
+  variables:
+    HELM_EXPERIMENTAL_OCI: 1
+  script:
+    - helm registry login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - helm chart pull $CI_REGISTRY/hubpd/helm-repo/grpc:0.2
+    - helm chart export $CI_REGISTRY/hubpd/helm-repo/grpc:0.2 -d /tmp/
+    - helm upgrade $GOPROJECT /tmp/grpc --install -f helm.yml --set image.tag=$CI_COMMIT_BRANCH-$CI_COMMIT_SHORT_SHA --kubeconfig $K8SCONF
+  only:
+    - master

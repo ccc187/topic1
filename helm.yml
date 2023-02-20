@@ -1,0 +1,25 @@
+image:
+  repository: registry-vpc.cn-hangzhou.aliyuncs.com/hubpd/topic
+
+migrateJob:
+  enabled: true
+
+appconfig:
+  grpcserveraddress: 0.0.0.0:5000
+  sentrydsn: https://6c4df933fae649f586f30cbab96dddd4@sentry-v.bolo.me/59
+  kafkahosts: kafka:9092
+  dbdsn: root:root@tcp(172.16.1.23:3390)/topic?parseTime=True&loc=Asia%2FShanghai
+  dbmaxidleconns: 2
+  dbmaxopenconns: 4
+  debug: true
+  grpcclientaddressbi: bi-api-server-grpc:80
+  enablecron: false
+  redisdsn: 172.16.1.24:7000,172.16.1.24:7001,172.16.1.24:7002
+  redispassword: 123456
+  redisprefix: "topicSvc"
+  redislockexpirationsec: 120
+
+appcron:
+  enabled: true
+  appconfig:
+    enablecron: true

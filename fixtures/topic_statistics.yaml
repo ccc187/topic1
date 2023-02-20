@@ -1,0 +1,8 @@
+- id: 1
+  created_at: 2020-09-15 00:00:00
+  updated_at: 2020-09-15 00:00:00
+  topic_id: 1
+  content_num: 1
+  mp_num: 1
+  content_exposure_num: 1
+  uniq: "1"
